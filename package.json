@@ -1,0 +1,27 @@
+{
+  "name": "claude-app-1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server": "node server.js",
+    "seed": "node prisma/seed.js",
+    "curriculum": "node prisma/fetchCurriculum.js",
+    "dev": "concurrently -n server,frontend -c green,cyan \"node server.js\" \"npm --prefix frontend run dev\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.20.0",
+    "concurrently": "^10.0.3",
+    "prisma": "^6.19.3"
+  }
+}

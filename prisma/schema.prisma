@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Challenge {
+  id          Int              @id @default(autoincrement())
+  title       String
+  prompt      String
+  testCases   String
+  orderIndex  Int              @unique
+  hints       String
+  learningTip String
+  mode        String           @default("stdin")
+  starterCode String           @default("")
+  category    String           @default("general")
+  difficulty  String           @default("easy")
+  attempts    Attempt[]
+  reviews     ReviewSchedule[]
+}
+
+model Attempt {
+  id              Int        @id @default(autoincrement())
+  codeSubmitted   String
+  executionTimeMs Int
+  success         Boolean
+  createdAt       DateTime   @default(now())
+  challengeId     Int?
+  challenge       Challenge? @relation(fields: [challengeId], references: [id])
+}
+
+model UserProfile {
+  id                   Int @id @default(autoincrement())
+  xp                   Int @default(0)
+  eloRating            Int @default(800)
+  currentStreak        Int @default(0)
+  highestUnlockedIndex Int @default(1)
+}
+
+model ReviewSchedule {
+  id             Int       @id @default(autoincrement())
+  challengeId    Int       @unique
+  challenge      Challenge @relation(fields: [challengeId], references: [id])
+  nextReviewDate DateTime
+  interval       Int       @default(0)
+  easinessFactor Float     @default(2.5)
+  repetitions    Int       @default(0)
+}

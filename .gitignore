@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Prisma local database + generated client
+prisma/dev.db
+prisma/dev.db-journal
+/generated/prisma
+
+# Personal data (kept local, not published)
+notes.md
+
+# Launcher build artifacts
+build/
+*.exe
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
