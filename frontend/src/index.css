@@ -164,7 +164,10 @@ body {
 .more-locked { color: var(--text-dim); font-size: 11px; font-style: italic; padding: 10px 12px 0 26px; }
 
 /* ---------- Workspace ---------- */
-.workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.workspace { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+/* Panels keep their natural height so the workspace SCROLLS instead of
+   squishing them — otherwise the notepad gets pushed off the bottom. */
+.workspace > * { flex-shrink: 0; }
 
 /* Briefing card */
 .briefing { padding: 16px 18px; }
@@ -186,8 +189,9 @@ body {
 .hint-item { color: #cdd3da; font-size: 13px; }
 .hint-pre { margin: 4px 0 0; white-space: pre-wrap; font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; font-size: 12.5px; background: var(--bg-0); padding: 9px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
 
-/* Editor panel */
-.editor-panel { flex: 1; min-height: 240px; display: flex; flex-direction: column; overflow: hidden; }
+/* Editor panel — fixed, responsive height (no flex:1, which would eat all
+   space and prevent the workspace from scrolling). */
+.editor-panel { flex: 0 0 auto; height: clamp(280px, 44vh, 620px); display: flex; flex-direction: column; overflow: hidden; }
 .panel-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--bg-2); border-bottom: 1px solid var(--border); }
 .panel-bar-title { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; }
 .panel-bar-tag { margin-left: auto; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-2); }
