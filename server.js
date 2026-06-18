@@ -17,6 +17,9 @@ app.use(express.json());
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Last GitHub sync outcome, surfaced to the UI via GET /api/sync/status.
+let lastSync = { status: 'idle', at: null, message: '' };
+
 // --- Helpers ---------------------------------------------------------------
 
 // Single-user app: always operate on profile id 1, creating it if missing.
@@ -317,7 +320,9 @@ app.post('/api/run', async (req, res) => {
   });
 
   // On a FIRST solve, push progress to GitHub (fire-and-forget; never blocks the run).
-  if (success && !alreadyCompleted && isEnabled()) {
+  const syncStarted = success && !alreadyCompleted && isEnabled();
+  if (syncStarted) {
+    lastSync = { status: 'pending', at: Date.now(), message: 'Syncing…' };
     (async () => {
       try {
         const solved = await prisma.attempt.findMany({
@@ -333,8 +338,10 @@ app.post('/api/run', async (req, res) => {
         });
         const total = await prisma.challenge.count();
         await syncProgress({ profile: updatedProfile, completed, total });
+        lastSync = { status: 'ok', at: Date.now(), message: `Synced ${completed.length}/${total} to GitHub` };
       } catch (e) {
         console.error('GitHub sync failed:', e.message);
+        lastSync = { status: 'failed', at: Date.now(), message: 'GitHub sync failed (offline?)' };
       }
     })();
   }
@@ -350,10 +357,14 @@ app.post('/api/run', async (req, res) => {
     eloDelta,
     unlocked,
     alreadyCompleted,
+    syncStarted,
     profile: updatedProfile,
     review,
   });
 });
+
+// Last GitHub sync outcome (for UI toasts).
+app.get('/api/sync/status', (req, res) => res.json(lastSync));
 
 // --- Append a new challenge (adapted to the new schema) --------------------
 app.post('/api/challenges', async (req, res) => {

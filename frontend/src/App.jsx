@@ -43,6 +43,25 @@ export default function App() {
   const noteTimer = useRef(null);
   const noteLoadedFor = useRef(null);
 
+  // Notifications
+  const [toasts, setToasts] = useState([]);
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const toastId = useRef(0);
+
+  const pushToast = useCallback((type, message, ttl = 4500) => {
+    const id = ++toastId.current;
+    setToasts((t) => [...t, { id, type, message }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ttl);
+  }, []);
+
+  useEffect(() => {
+    const up = () => { setOnline(true); pushToast('ok', 'Back online ✓'); };
+    const down = () => { setOnline(false); pushToast('error', "You're offline — code still runs locally; editor & sync need internet."); };
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, [pushToast]);
+
   const loadChallenges = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/challenges`);
@@ -120,8 +139,25 @@ export default function App() {
       setResult(data);
       if (data.profile) setProfile(data.profile);
       if (data.unlocked) loadChallenges();
+
+      // Surface GitHub sync result (sync is async on the server; poll until resolved).
+      if (data.syncStarted) {
+        pushToast('info', 'Syncing progress to GitHub…');
+        let tries = 0;
+        const poll = async () => {
+          tries += 1;
+          try {
+            const s = await fetch(`${API}/api/sync/status`).then((r) => r.json());
+            if (s.status === 'ok') return pushToast('ok', `✓ ${s.message}`);
+            if (s.status === 'failed') return pushToast('error', `⚠ ${s.message}`);
+          } catch { /* ignore, will retry */ }
+          if (tries < 8) setTimeout(poll, 1500);
+        };
+        setTimeout(poll, 1500);
+      }
     } catch (err) {
       setResult({ output: `Request failed: ${err.message}`, success: false });
+      pushToast('error', "Can't reach the server — is it running?");
     } finally {
       setRunning(false);
     }
@@ -189,6 +225,12 @@ export default function App() {
           <button className="reset-link" onClick={resetProgress} title="Reset all progress">↺ Reset</button>
         </div>
       </header>
+
+      {!online && (
+        <div className="offline-banner">
+          ⚠ You're offline — running code still works, but the editor and GitHub sync need internet.
+        </div>
+      )}
 
       <div className="body">
         {/* Sidebar / skill tree */}
@@ -396,6 +438,12 @@ export default function App() {
             />
           </section>
         </main>
+      </div>
+
+      <div className="toast-wrap">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast toast-${t.type}`}>{t.message}</div>
+        ))}
       </div>
     </div>
   );

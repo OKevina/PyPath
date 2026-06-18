@@ -9,7 +9,7 @@
  * Closing the console window stops the server. Requires Node.js installed and
  * PyPath.exe sitting next to server.js (i.e. in the project folder).
  */
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -58,4 +58,23 @@ function waitForServer(attempt = 0) {
 }
 
 waitForServer();
+
+// Guarantee the server (and its children) are killed whenever this launcher
+// goes away — closing the console window, Ctrl+C, etc. — so port 3001 is freed.
+let cleanedUp = false;
+function cleanup() {
+  if (cleanedUp) return;
+  cleanedUp = true;
+  try {
+    if (server.pid) spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F']);
+  } catch { /* best effort */ }
+}
+
+process.on('exit', cleanup);
+['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'].forEach((sig) => {
+  try {
+    process.on(sig, () => { cleanup(); process.exit(0); });
+  } catch { /* signal not supported on this platform */ }
+});
+
 server.on('exit', (code) => process.exit(code || 0));
