@@ -53,6 +53,18 @@ function bar(pct, width = 24) {
   return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 
+function slug(title) {
+  return (title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50) || 'challenge';
+}
+
+function solutionPath(orderIndex, title) {
+  return `solutions/${String(orderIndex).padStart(3, '0')}-${slug(title)}.py`;
+}
+
 function buildMarkdown(profile, completed, total) {
   const pct = total > 0 ? Math.round((completed.length / total) * 100) : 0;
   const rows = completed
@@ -74,6 +86,8 @@ ${bar(pct)}  ${pct}%
 | 🔥 Streak | **${profile.currentStreak}** |
 | 🕒 Last updated | ${new Date().toISOString()} |
 
+💾 Solutions are archived in the [\`solutions/\`](solutions/) folder.
+
 ## Completed challenges
 | # | Title | Category | Difficulty |
 |---|-------|----------|------------|
@@ -81,8 +95,18 @@ ${rows || '| — | _none yet_ | | |'}
 `;
 }
 
-async function syncProgress({ profile, completed, total }) {
+async function syncProgress({ profile, completed, total, solution }) {
   if (!ENABLED) return { skipped: true };
+
+  // Archive the just-solved solution as its own file (incremental — one per solve).
+  if (solution && solution.code != null) {
+    await putFile(
+      solutionPath(solution.orderIndex, solution.title),
+      solution.code,
+      `solution: #${solution.orderIndex} ${solution.title}`
+    );
+  }
+
   const json = JSON.stringify(
     {
       updatedAt: new Date().toISOString(),

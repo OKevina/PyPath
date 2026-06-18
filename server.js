@@ -319,8 +319,9 @@ app.post('/api/run', async (req, res) => {
     },
   });
 
-  // On a FIRST solve, push progress to GitHub (fire-and-forget; never blocks the run).
-  const syncStarted = success && !alreadyCompleted && isEnabled();
+  // On ANY successful solve, push progress + the submitted solution to GitHub
+  // (fire-and-forget; never blocks the run). Re-solves overwrite the solution file.
+  const syncStarted = success && isEnabled();
   if (syncStarted) {
     lastSync = { status: 'pending', at: Date.now(), message: 'Syncing…' };
     (async () => {
@@ -337,8 +338,13 @@ app.post('/api/run', async (req, res) => {
           orderBy: { orderIndex: 'asc' },
         });
         const total = await prisma.challenge.count();
-        await syncProgress({ profile: updatedProfile, completed, total });
-        lastSync = { status: 'ok', at: Date.now(), message: `Synced ${completed.length}/${total} to GitHub` };
+        await syncProgress({
+          profile: updatedProfile,
+          completed,
+          total,
+          solution: { orderIndex: challenge.orderIndex, title: challenge.title, code },
+        });
+        lastSync = { status: 'ok', at: Date.now(), message: `Synced ${completed.length}/${total} + solution` };
       } catch (e) {
         console.error('GitHub sync failed:', e.message);
         lastSync = { status: 'failed', at: Date.now(), message: 'GitHub sync failed (offline?)' };
