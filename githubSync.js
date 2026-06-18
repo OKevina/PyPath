@@ -12,6 +12,8 @@
  */
 const { execFile } = require('child_process');
 const util = require('util');
+const fs = require('fs');
+const path = require('path');
 const execFileP = util.promisify(execFile);
 
 const REPO = process.env.GITHUB_PROGRESS_REPO || '';
@@ -21,8 +23,36 @@ function isEnabled() {
   return ENABLED;
 }
 
+// Resolve gh.exe by absolute path so sync works even when the process PATH
+// predates the gh install (e.g. launched from Explorer before a reboot).
+// Prefers an explicit GH_PATH, then known install dirs, then bare 'gh' (PATH).
+let GH_BIN = null;
+function resolveGh() {
+  if (GH_BIN) return GH_BIN;
+  const candidates = [
+    process.env.GH_PATH,
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'GitHub CLI', 'gh.exe'),
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'GitHub CLI', 'gh.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'GitHub CLI', 'gh.exe'),
+  ].filter(Boolean);
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) { GH_BIN = c; return GH_BIN; } } catch { /* keep looking */ }
+  }
+  GH_BIN = 'gh'; // last resort: rely on PATH
+  return GH_BIN;
+}
+
 async function gh(args) {
-  return execFileP('gh', args, { maxBuffer: 4 * 1024 * 1024 });
+  try {
+    return await execFileP(resolveGh(), args, { maxBuffer: 4 * 1024 * 1024 });
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      throw new Error('GitHub CLI (gh) not found — install it or set GH_PATH in .env');
+    }
+    // gh exits non-zero on API errors; surface its stderr, which is the real reason.
+    const detail = (e.stderr || e.message || '').toString().split('\n').find((l) => l.trim());
+    throw new Error(detail || 'gh command failed');
+  }
 }
 
 // Current blob SHA for a path (needed to update an existing file), or null.

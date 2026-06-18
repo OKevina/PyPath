@@ -347,7 +347,8 @@ app.post('/api/run', async (req, res) => {
         lastSync = { status: 'ok', at: Date.now(), message: `Synced ${completed.length}/${total} + solution` };
       } catch (e) {
         console.error('GitHub sync failed:', e.message);
-        lastSync = { status: 'failed', at: Date.now(), message: 'GitHub sync failed (offline?)' };
+        const reason = (e.message || 'unknown error').slice(0, 140);
+        lastSync = { status: 'failed', at: Date.now(), message: `Sync failed: ${reason}` };
       }
     })();
   }
